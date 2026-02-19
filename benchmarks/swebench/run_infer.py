@@ -12,7 +12,8 @@ from benchmarks.swebench.build_images import (
     should_wrap_instance_id,
     wrap_image,
 )
-from benchmarks.swebench.config import INFER_DEFAULTS
+from benchmarks.swebench.config import INFER_DEFAULTS, INFER_MODAL_DEFAULTS
+from benchmarks.swebench.modal_workspace import ModalSandboxWorkspace
 from benchmarks.utils.args_parser import get_parser
 from benchmarks.utils.build_utils import build_image
 from benchmarks.utils.constants import EVAL_AGENT_SERVER_IMAGE
@@ -205,6 +206,46 @@ class SWEBenchEvaluation(Evaluation):
                 resource_factor=resource_factor,
                 init_timeout=startup_timeout,
                 startup_wait_timeout=startup_timeout,
+            )
+        elif self.metadata.workspace_type == "modal":
+            sdk_short_sha = os.getenv("SDK_SHORT_SHA", SDK_SHORT_SHA)
+            agent_server_image = (
+                f"{EVAL_AGENT_SERVER_IMAGE}:{sdk_short_sha}-{custom_tag}{suffix}"
+            )
+            if not image_exists(agent_server_image):
+                raise RuntimeError(
+                    f"Agent server image {agent_server_image} does not exist in container registry, "
+                    "make sure to build, push it, and make it publicly accessible before using modal workspace."
+                )
+            logger.info(
+                f"Using Modal sandbox workspace with image {agent_server_image}"
+            )
+            workspace = ModalSandboxWorkspace(
+                server_image=agent_server_image,
+                working_dir="/workspace",
+                app_name=os.getenv("MODAL_APP_NAME", "benchmarks-swebench-workspace"),
+                timeout=int(
+                    os.getenv(
+                        "MODAL_SANDBOX_TIMEOUT",
+                        str(INFER_MODAL_DEFAULTS["sandbox_timeout"]),
+                    )
+                ),
+                idle_timeout=(
+                    int(os.getenv("MODAL_SANDBOX_IDLE_TIMEOUT", "900")) or None
+                ),
+                cpu=float(
+                    os.getenv(
+                        "MODAL_SANDBOX_CPU",
+                        str(INFER_MODAL_DEFAULTS["sandbox_cpu"]),
+                    )
+                ),
+                memory=int(
+                    os.getenv(
+                        "MODAL_SANDBOX_MEMORY_MIB",
+                        str(INFER_MODAL_DEFAULTS["sandbox_memory_mib"]),
+                    )
+                ),
+                forward_env=forward_env or [],
             )
         else:
             raise ValueError(

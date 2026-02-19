@@ -11,6 +11,15 @@ INFER_DEFAULTS = {
     "num_workers": 30,
 }
 
+# Modal sandbox inference defaults (used by run_infer_modal.py)
+INFER_MODAL_DEFAULTS = {
+    "sandbox_timeout": 3600,
+    "sandbox_idle_timeout": 900,
+    "sandbox_cpu": 4.0,
+    "sandbox_memory_mib": 8192,
+    "modal_concurrency": 8,
+}
+
 # Evaluation defaults (used by eval_infer.py)
 EVAL_DEFAULTS = {
     "dataset": "princeton-nlp/SWE-bench_Verified",
